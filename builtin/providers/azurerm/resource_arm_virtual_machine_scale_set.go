@@ -65,6 +65,12 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 				Set: resourceArmVirtualMachineScaleSetSkuHash,
 			},
 
+			"overprovision": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+
 			"upgrade_policy_mode": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -385,7 +391,9 @@ func resourceArmVirtualMachineScaleSetCreate(d *schema.ResourceData, meta interf
 	}
 
 	updatePolicy := d.Get("upgrade_policy_mode").(string)
+	overprovision := d.Get("overprovision").(bool)
 	scaleSetProps := compute.VirtualMachineScaleSetProperties{
+		Overprovision: &overprovision,
 		UpgradePolicy: &compute.UpgradePolicy{
 			Mode: compute.UpgradeMode(updatePolicy),
 		},
@@ -449,6 +457,7 @@ func resourceArmVirtualMachineScaleSetRead(d *schema.ResourceData, meta interfac
 	}
 
 	d.Set("upgrade_policy_mode", resp.Properties.UpgradePolicy.Mode)
+	d.Set("overprovision", resp.Properties.Overprovision)
 
 	if err := d.Set("os_profile", flattenAzureRMVirtualMachineScaleSetOsProfile(resp.Properties.VirtualMachineProfile.OsProfile)); err != nil {
 		return fmt.Errorf("[DEBUG] Error setting Virtual Machine Scale Set OS Profile error: %#v", err)
@@ -605,6 +614,7 @@ func flattenAzureRmVirtualMachineScaleSetOsProfileSecrets(secrets *[]compute.Vau
 func flattenAzureRmVirtualMachineScaleSetNetworkProfile(profile *compute.VirtualMachineScaleSetNetworkProfile) []map[string]interface{} {
 	networkConfigurations := profile.NetworkInterfaceConfigurations
 	result := make([]map[string]interface{}, 0, len(*networkConfigurations))
+	log.Printf("[DEBUG] flattenAzureRmVirtualMachineScaleSetNetworkProfile")
 	for _, netConfig := range *networkConfigurations {
 		s := map[string]interface{}{
 			"name":    *netConfig.Name,
@@ -612,8 +622,10 @@ func flattenAzureRmVirtualMachineScaleSetNetworkProfile(profile *compute.Virtual
 		}
 
 		if netConfig.Properties.IPConfigurations != nil {
+			log.Printf("[DEBUG] Handling IPConfigurations")
 			ipConfigs := make([]map[string]interface{}, 0, len(*netConfig.Properties.IPConfigurations))
 			for _, ipConfig := range *netConfig.Properties.IPConfigurations {
+				log.Printf("[DEBUG] Handling IPConfig %v", ipConfig)
 				config := make(map[string]interface{})
 				config["name"] = *ipConfig.Name
 
