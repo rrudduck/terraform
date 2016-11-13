@@ -829,10 +829,19 @@ func expandAzureRmVirtualMachineScaleSetNetworkProfile(d *schema.ResourceData) *
 					},
 				},
 			}
-			//TODO: Add the support for the load balancers when it drops
-			//if v := ipconfig["load_balancer_backend_address_pool_ids"]; v != nil {
-			//
-			//}
+
+			if v := ipconfig["load_balancer_backend_address_pool_ids"]; v != nil {
+				poolIDConfigs := v.(*schema.Set).List()
+				poolIDs := make([]compute.SubResource, 0, len(poolIDConfigs))
+				for _, poolID := range poolIDConfigs {
+					p := poolID.(string)
+					r := compute.SubResource{
+						ID: &p,
+					}
+					poolIDs = append(poolIDs, r)
+				}
+				ipConfiguration.Properties.LoadBalancerBackendAddressPools = &poolIDs
+			}
 
 			ipConfigurations = append(ipConfigurations, ipConfiguration)
 		}
