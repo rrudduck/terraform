@@ -286,10 +286,11 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 						},
 
 						"vhd_containers": &schema.Schema{
-							Type:     schema.TypeSet,
-							Required: true,
-							Elem:     &schema.Schema{Type: schema.TypeString},
-							Set:      schema.HashString,
+							Type:          schema.TypeSet,
+							Optional:      true,
+							Elem:          &schema.Schema{Type: schema.TypeString},
+							Set:           schema.HashString,
+							ConflictsWith: []string{"storage_profile_os_disk.image"},
 						},
 
 						"caching": &schema.Schema{
@@ -658,11 +659,13 @@ func flattenAzureRmVirtualMachineScaleSetStorageProfileOSDisk(profile *compute.V
 		result["image"] = *profile.Image.URI
 	}
 
-	containers := make([]interface{}, 0, len(*profile.VhdContainers))
-	for _, container := range *profile.VhdContainers {
-		containers = append(containers, container)
+	if profile.VhdContainers != nil {
+		containers := make([]interface{}, 0, len(*profile.VhdContainers))
+		for _, container := range *profile.VhdContainers {
+			containers = append(containers, container)
+		}
+		result["vhd_containers"] = schema.NewSet(schema.HashString, containers)
 	}
-	result["vhd_containers"] = schema.NewSet(schema.HashString, containers)
 
 	result["caching"] = profile.Caching
 	result["create_option"] = profile.CreateOption
