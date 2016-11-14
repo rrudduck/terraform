@@ -230,7 +230,7 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 			},
 
 			"network_profile": &schema.Schema{
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -271,7 +271,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 						},
 					},
 				},
-				Set: resourceArmVirtualMachineScaleSetNetworkConfigurationHash,
 			},
 
 			"storage_profile_os_disk": &schema.Schema{
@@ -817,7 +816,7 @@ func expandVirtualMachineScaleSetSku(d *schema.ResourceData) (*compute.Sku, erro
 }
 
 func expandAzureRmVirtualMachineScaleSetNetworkProfile(d *schema.ResourceData) *compute.VirtualMachineScaleSetNetworkProfile {
-	scaleSetNetworkProfileConfigs := d.Get("network_profile").(*schema.Set).List()
+	scaleSetNetworkProfileConfigs := d.Get("network_profile").([]interface{})
 	networkProfileConfig := make([]compute.VirtualMachineScaleSetNetworkConfiguration, 0, len(scaleSetNetworkProfileConfigs))
 
 	for _, npProfileConfig := range scaleSetNetworkProfileConfigs {
