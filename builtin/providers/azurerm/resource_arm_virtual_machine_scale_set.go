@@ -245,7 +245,7 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 						},
 
 						"ip_configuration": &schema.Schema{
-							Type:     schema.TypeList,
+							Type:     schema.TypeSet,
 							Required: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
@@ -268,6 +268,7 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 									},
 								},
 							},
+							Set: resourceArmVirtualMachineScaleSetIPConfigurationHash,
 						},
 					},
 				},
@@ -764,6 +765,13 @@ func resourceArmVirtualMachineScaleSetNetworkConfigurationHash(v interface{}) in
 	return hashcode.String(buf.String())
 }
 
+func resourceArmVirtualMachineScaleSetIPConfigurationHash(v interface{}) int {
+	var buf bytes.Buffer
+	m := v.(map[string]interface{})
+	buf.WriteString(fmt.Sprintf("%s-", m["name"].(string)))
+	return hashcode.String(buf.String())
+}
+
 func resourceArmVirtualMachineScaleSetsOsProfileHash(v interface{}) int {
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
@@ -817,10 +825,14 @@ func expandVirtualMachineScaleSetSku(d *schema.ResourceData) (*compute.Sku, erro
 }
 
 func expandAzureRmVirtualMachineScaleSetNetworkProfile(d *schema.ResourceData) *compute.VirtualMachineScaleSetNetworkProfile {
+	log.Printf("[DEBUG] expandAzureRmVirtualMachineScaleSetNetworkProfile")
+	log.Printf("[DEBUG] %v", d)
+	log.Printf("[DEBUG] %v", d.Get("network_profile"))
 	scaleSetNetworkProfileConfigs := d.Get("network_profile").(*schema.Set).List()
 	networkProfileConfig := make([]compute.VirtualMachineScaleSetNetworkConfiguration, 0, len(scaleSetNetworkProfileConfigs))
 
 	for _, npProfileConfig := range scaleSetNetworkProfileConfigs {
+		log.Printf("[DEBUG] Processing network_profile", npProfileConfig)
 		config := npProfileConfig.(map[string]interface{})
 
 		name := config["name"].(string)
@@ -829,6 +841,7 @@ func expandAzureRmVirtualMachineScaleSetNetworkProfile(d *schema.ResourceData) *
 		ipConfigurationConfigs := config["ip_configuration"].([]interface{})
 		ipConfigurations := make([]compute.VirtualMachineScaleSetIPConfiguration, 0, len(ipConfigurationConfigs))
 		for _, ipConfigConfig := range ipConfigurationConfigs {
+			log.Printf("[DEBUG] Processing ip_configuration %v", ipConfigConfig)
 			ipconfig := ipConfigConfig.(map[string]interface{})
 			name := ipconfig["name"].(string)
 			subnetId := ipconfig["subnet_id"].(string)
