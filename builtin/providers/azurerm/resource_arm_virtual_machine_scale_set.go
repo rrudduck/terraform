@@ -17,6 +17,9 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 		Read:   resourceArmVirtualMachineScaleSetRead,
 		Update: resourceArmVirtualMachineScaleSetCreate,
 		Delete: resourceArmVirtualMachineScaleSetDelete,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
