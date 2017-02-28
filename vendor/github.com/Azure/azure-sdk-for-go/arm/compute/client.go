@@ -28,7 +28,7 @@ import (
 
 const (
 	// APIVersion is the version of the Compute
-	APIVersion = "2016-03-30"
+	APIVersion = "2016-04-30-preview"
 
 	// DefaultBaseURI is the default URI used for the service Compute
 	DefaultBaseURI = "https://management.azure.com"
