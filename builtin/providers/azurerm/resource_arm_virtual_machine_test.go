@@ -438,6 +438,25 @@ func TestAccAzureRMVirtualMachine_changeSSHKey(t *testing.T) {
 	})
 }
 
+func TestAccAzureRMVirtualMachine_managedDisk(t *testing.T) {
+	var vm compute.VirtualMachine
+	ri := acctest.RandInt()
+	config := fmt.Sprintf(testAccAzureRMVirtualMachine_managedDisk, ri, ri, ri, ri, ri, ri)
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testCheckAzureRMVirtualMachineDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMVirtualMachineExists("azurerm_virtual_machine.test", &vm),
+				),
+			},
+		},
+	})
+}
+
 func testCheckAzureRMVirtualMachineExists(name string, vm *compute.VirtualMachine) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		// Ensure we have enough information in state to look up in API
@@ -2456,6 +2475,69 @@ resource "azurerm_virtual_machine" "test" {
 
     os_profile {
         computer_name = "hostname%s"
+        admin_username = "testadmin"
+        admin_password = "Password1234!"
+    }
+
+    os_profile_linux_config {
+	    disable_password_authentication = true
+    }
+}
+`
+
+var testAccAzureRMVirtualMachine_managedDisk = `
+resource "azurerm_resource_group" "test" {
+    name     = "acctestrg%s"
+    location = "southcentralus"
+}
+
+resource "azurerm_virtual_network" "test" {
+    name                = "acctvn%s"
+    address_space       = ["10.0.0.0/16"]
+    location            = "southcentralus"
+    resource_group_name = "${azurerm_resource_group.test.name}"
+}
+
+resource "azurerm_subnet" "test" {
+    name                 = "acctsub%s"
+    resource_group_name  = "${azurerm_resource_group.test.name}"
+    virtual_network_name = "${azurerm_virtual_network.test.name}"
+    address_prefix       = "10.0.2.0/24"
+}
+
+resource "azurerm_network_interface" "test" {
+    name                = "acctni%s"
+    location            = "southcentralus"
+    resource_group_name = "${azurerm_resource_group.test.name}"
+
+    ip_configuration {
+    	name                          = "testconfiguration1"
+    	subnet_id                     = "${azurerm_subnet.test.id}"
+    	private_ip_address_allocation = "dynamic"
+    }
+}
+
+resource "azurerm_virtual_machine" "test" {
+    name                  = "acctvm%s"
+    location              = "southcentralus"
+    resource_group_name   = "${azurerm_resource_group.test.name}"
+    network_interface_ids = ["${azurerm_network_interface.test.id}"]
+    vm_size               = "Standard_A0"
+
+    storage_image_reference {
+        publisher = "Canonical"
+        offer     = "UbuntuServer"
+        sku       = "14.04.2-LTS"
+        version   = "latest"
+    }
+
+    storage_os_disk {
+        name          = "acctvmosdisk"
+        create_option = "FromImage"
+    }
+
+    os_profile {
+        computer_name  = "hostname%s"
         admin_username = "testadmin"
         admin_password = "Password1234!"
     }
