@@ -1303,11 +1303,14 @@ func expandAzureRmVirtualMachineOsDisk(d *schema.ResourceData) (*compute.OSDisk,
 	createOption := disk["create_option"].(string)
 
 	osDisk := &compute.OSDisk{
-		Name: &name,
-		Vhd: &compute.VirtualHardDisk{
-			URI: &vhdURI,
-		},
+		Name:         &name,
 		CreateOption: compute.DiskCreateOptionTypes(createOption),
+	}
+
+	if vhdURI != "" {
+		osDisk.Vhd = &compute.VirtualHardDisk{
+			URI: &vhdURI,
+		}
 	}
 
 	if v := disk["image_uri"].(string); v != "" {
