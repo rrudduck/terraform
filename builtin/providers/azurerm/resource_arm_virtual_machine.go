@@ -190,7 +190,7 @@ func resourceArmVirtualMachine() *schema.Resource {
 
 						"vhd_uri": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"create_option": {
