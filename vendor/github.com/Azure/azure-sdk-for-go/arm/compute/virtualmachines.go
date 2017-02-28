@@ -19,10 +19,11 @@ package compute
 // regenerated.
 
 import (
+	"net/http"
+
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/validation"
-	"net/http"
 )
 
 // VirtualMachinesClient is the the Compute Management Client.
@@ -130,29 +131,6 @@ func (client VirtualMachinesClient) CaptureResponder(resp *http.Response) (resul
 // the virtual machine. parameters is parameters supplied to the Create Virtual
 // Machine operation.
 func (client VirtualMachinesClient) CreateOrUpdate(resourceGroupName string, vmName string, parameters VirtualMachine, cancel <-chan struct{}) (result autorest.Response, err error) {
-	if err := validation.Validate([]validation.Validation{
-		{TargetValue: parameters,
-			Constraints: []validation.Constraint{{Target: "parameters.VirtualMachineProperties", Name: validation.Null, Rule: false,
-				Chain: []validation.Constraint{{Target: "parameters.VirtualMachineProperties.StorageProfile", Name: validation.Null, Rule: false,
-					Chain: []validation.Constraint{{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk", Name: validation.Null, Rule: false,
-						Chain: []validation.Constraint{{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings", Name: validation.Null, Rule: false,
-							Chain: []validation.Constraint{{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings.DiskEncryptionKey", Name: validation.Null, Rule: false,
-								Chain: []validation.Constraint{{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings.DiskEncryptionKey.SecretURL", Name: validation.Null, Rule: true, Chain: nil},
-									{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings.DiskEncryptionKey.SourceVault", Name: validation.Null, Rule: true, Chain: nil},
-								}},
-								{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings.KeyEncryptionKey", Name: validation.Null, Rule: false,
-									Chain: []validation.Constraint{{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings.KeyEncryptionKey.KeyURL", Name: validation.Null, Rule: true, Chain: nil},
-										{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.EncryptionSettings.KeyEncryptionKey.SourceVault", Name: validation.Null, Rule: true, Chain: nil},
-									}},
-							}},
-							{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.Name", Name: validation.Null, Rule: true, Chain: nil},
-							{Target: "parameters.VirtualMachineProperties.StorageProfile.OsDisk.Vhd", Name: validation.Null, Rule: true, Chain: nil},
-						}},
-					}},
-				}}}}}); err != nil {
-		return result, validation.NewErrorWithValidationError(err, "compute.VirtualMachinesClient", "CreateOrUpdate")
-	}
-
 	req, err := client.CreateOrUpdatePreparer(resourceGroupName, vmName, parameters, cancel)
 	if err != nil {
 		return result, autorest.NewErrorWithError(err, "compute.VirtualMachinesClient", "CreateOrUpdate", nil, "Failure preparing request")
