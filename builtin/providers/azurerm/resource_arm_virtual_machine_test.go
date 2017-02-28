@@ -440,7 +440,7 @@ func TestAccAzureRMVirtualMachine_changeSSHKey(t *testing.T) {
 
 func TestAccAzureRMVirtualMachine_managedDisk(t *testing.T) {
 	var vm compute.VirtualMachine
-	ri := acctest.RandInt()
+	ri := strings.ToLower(acctest.RandString(10))
 	config := fmt.Sprintf(testAccAzureRMVirtualMachine_managedDisk, ri, ri, ri, ri, ri, ri)
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
