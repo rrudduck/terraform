@@ -41,7 +41,7 @@ var (
 // UserAgent returns the UserAgent string to use when sending http.Requests.
 func UserAgent() string {
 	if userAgent == "" {
-		userAgent = fmt.Sprintf(userAgentFormat, Version(), "compute", "2016-03-30")
+		userAgent = fmt.Sprintf(userAgentFormat, Version(), "compute", "2016-04-30-preview")
 	}
 	return userAgent
 }
