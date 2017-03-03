@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/arm/compute"
 	"github.com/hashicorp/terraform/helper/hashcode"
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/helper/validation"
 )
 
 func resourceArmVirtualMachineScaleSet() *schema.Resource {
@@ -276,7 +277,24 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+						},
+
+						"managed_disk": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"storage_account_type": {
+										Type:     schema.TypeString,
+										Required: true,
+										ValidateFunc: validation.StringInSlice([]string{
+											string(compute.PremiumLRS),
+											string(compute.StandardLRS),
+										}, true),
+									},
+								},
+							},
 						},
 
 						"image": {
@@ -293,7 +311,7 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 
 						"caching": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 
 						"os_type": {
@@ -303,11 +321,51 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 
 						"create_option": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
 				Set: resourceArmVirtualMachineScaleSetStorageProfileOsDiskHash,
+			},
+
+			"storage_profile_data_disk": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"managed_disk": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"storage_account_type": {
+										Type:     schema.TypeString,
+										Required: true,
+										ValidateFunc: validation.StringInSlice([]string{
+											string(compute.PremiumLRS),
+											string(compute.StandardLRS),
+										}, true),
+									},
+								},
+							},
+						},
+
+						"create_option": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+
+						"disk_size_gb": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+
+						"lun": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+					},
+				},
 			},
 
 			"storage_profile_image_reference": {
@@ -539,8 +597,10 @@ func resourceArmVirtualMachineScaleSetRead(d *schema.ResourceData, meta interfac
 		}
 	}
 
-	if err := d.Set("storage_profile_os_disk", flattenAzureRmVirtualMachineScaleSetStorageProfileOSDisk(properties.VirtualMachineProfile.StorageProfile.OsDisk)); err != nil {
-		return fmt.Errorf("[DEBUG] Error setting Virtual Machine Scale Set Storage Profile OS Disk error: %#v", err)
+	if properties.VirtualMachineProfile.StorageProfile.OsDisk != nil {
+		if err := d.Set("storage_profile_os_disk", flattenAzureRmVirtualMachineScaleSetStorageProfileOSDisk(properties.VirtualMachineProfile.StorageProfile.OsDisk)); err != nil {
+			return fmt.Errorf("[DEBUG] Error setting Virtual Machine Scale Set Storage Profile OS Disk error: %#v", err)
+		}
 	}
 
 	if properties.VirtualMachineProfile.ExtensionProfile != nil {
@@ -728,7 +788,11 @@ func flattenAzureRMVirtualMachineScaleSetOsProfile(profile *compute.VirtualMachi
 
 func flattenAzureRmVirtualMachineScaleSetStorageProfileOSDisk(profile *compute.VirtualMachineScaleSetOSDisk) []interface{} {
 	result := make(map[string]interface{})
-	result["name"] = *profile.Name
+
+	if profile.Name != nil {
+		result["name"] = *profile.Name
+	}
+
 	if profile.Image != nil {
 		result["image"] = *profile.Image.URI
 	}
@@ -741,11 +805,21 @@ func flattenAzureRmVirtualMachineScaleSetStorageProfileOSDisk(profile *compute.V
 		result["vhd_containers"] = schema.NewSet(schema.HashString, containers)
 	}
 
-	result["caching"] = profile.Caching
-	result["create_option"] = profile.CreateOption
-	result["os_type"] = profile.OsType
+	if profile.ManagedDisk != nil {
+		result["managed_disk"] = flattenAzureRmVirtualMachineScaleSetManagedDisk(profile.ManagedDisk)
+	} else {
+		result["caching"] = profile.Caching
+		result["create_option"] = profile.CreateOption
+		result["os_type"] = profile.OsType
+	}
 
 	return []interface{}{result}
+}
+
+func flattenAzureRmVirtualMachineScaleSetManagedDisk(params *compute.VirtualMachineScaleSetManagedDiskParameters) map[string]interface{} {
+	managedDisk := make(map[string]interface{})
+	managedDisk["storage_account_type"] = string(params.StorageAccountType)
+	return managedDisk
 }
 
 func flattenAzureRmVirtualMachineScaleSetStorageProfileImageReference(profile *compute.ImageReference) []interface{} {
@@ -833,7 +907,12 @@ func resourceArmVirtualMachineScaleSetStorageProfileOsDiskHash(v interface{}) in
 	if m["image"] != nil {
 		buf.WriteString(fmt.Sprintf("%s-", m["image"].(string)))
 	}
-
+	if m["managed_disk"] != nil {
+		managedDisk := m["managed_disk"].(map[string]interface{})
+		if managedDisk["storage_account_type"] != nil {
+			buf.WriteString(fmt.Sprintf("%s-", managedDisk["storage_account_type"].(string)))
+		}
+	}
 	return hashcode.String(buf.String())
 }
 
@@ -1028,36 +1107,58 @@ func expandAzureRMVirtualMachineScaleSetsOsProfile(d *schema.ResourceData) (*com
 func expandAzureRMVirtualMachineScaleSetsStorageProfileOsDisk(d *schema.ResourceData) (*compute.VirtualMachineScaleSetOSDisk, error) {
 	osDiskConfigs := d.Get("storage_profile_os_disk").(*schema.Set).List()
 
-	osDiskConfig := osDiskConfigs[0].(map[string]interface{})
-	name := osDiskConfig["name"].(string)
-	image := osDiskConfig["image"].(string)
-	caching := osDiskConfig["caching"].(string)
-	osType := osDiskConfig["os_type"].(string)
-	createOption := osDiskConfig["create_option"].(string)
+	if len(osDiskConfigs) > 0 {
+		osDiskConfig := osDiskConfigs[0].(map[string]interface{})
+		name := osDiskConfig["name"].(string)
+		image := osDiskConfig["image"].(string)
+		caching := osDiskConfig["caching"].(string)
+		osType := osDiskConfig["os_type"].(string)
+		createOption := osDiskConfig["create_option"].(string)
+		managedDisk := osDiskConfig["managed_disk"].(map[string]interface{})
 
-	osDisk := &compute.VirtualMachineScaleSetOSDisk{
-		Name:         &name,
-		Caching:      compute.CachingTypes(caching),
-		OsType:       compute.OperatingSystemTypes(osType),
-		CreateOption: compute.DiskCreateOptionTypes(createOption),
+		osDisk := &compute.VirtualMachineScaleSetOSDisk{
+			Name: &name,
+		}
+
+		if caching != "" {
+			osDisk.Caching = compute.CachingTypes(caching)
+		}
+
+		if osType != "" {
+			osDisk.OsType = compute.OperatingSystemTypes(osType)
+		}
+
+		if createOption != "" {
+			osDisk.CreateOption = compute.DiskCreateOptionTypes(createOption)
+		}
+
+		if image != "" {
+			osDisk.Image = &compute.VirtualHardDisk{
+				URI: &image,
+			}
+		} else {
+			var vhdContainers []string
+			containers := osDiskConfig["vhd_containers"].(*schema.Set).List()
+			for _, v := range containers {
+				str := v.(string)
+				vhdContainers = append(vhdContainers, str)
+			}
+			osDisk.VhdContainers = &vhdContainers
+		}
+
+		if managedDisk != nil {
+			accountType := managedDisk["storage_account_type"].(string)
+			if accountType != "" {
+				osDisk.ManagedDisk = &compute.VirtualMachineScaleSetManagedDiskParameters{
+					StorageAccountType: compute.StorageAccountTypes(accountType),
+				}
+			}
+		}
+
+		return osDisk, nil
 	}
 
-	if image != "" {
-		osDisk.Image = &compute.VirtualHardDisk{
-			URI: &image,
-		}
-	} else {
-		var vhdContainers []string
-		containers := osDiskConfig["vhd_containers"].(*schema.Set).List()
-		for _, v := range containers {
-			str := v.(string)
-			vhdContainers = append(vhdContainers, str)
-		}
-		osDisk.VhdContainers = &vhdContainers
-	}
-
-	return osDisk, nil
-
+	return nil, nil
 }
 
 func expandAzureRmVirtualMachineScaleSetStorageProfileImageReference(d *schema.ResourceData) (*compute.ImageReference, error) {

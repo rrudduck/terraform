@@ -124,6 +124,24 @@ func TestAccAzureRMVirtualMachineScaleSet_multipleExtensions(t *testing.T) {
 	})
 }
 
+func TestAccAzureRMVirtualMachineScaleSet_managedDisk(t *testing.T) {
+	ri := acctest.RandInt()
+	config := fmt.Sprintf(testAccAzureRMVirtualMachineScaleSetManagedDiskTemplate, ri, ri, ri, ri, ri)
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testCheckAzureRMVirtualMachineScaleSetDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMVirtualMachineScaleSetExists("azurerm_virtual_machine_scale_set.test"),
+				),
+			},
+		},
+	})
+}
+
 func testCheckAzureRMVirtualMachineScaleSetExists(name string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		// Ensure we have enough information in state to look up in API
@@ -779,6 +797,69 @@ SETTINGS
 		type                       = "DockerExtension"
 		type_handler_version       = "1.0"
 		auto_upgrade_minor_version = true
+	}
+}
+`
+
+var testAccAzureRMVirtualMachineScaleSetManagedDiskTemplate = `
+resource "azurerm_resource_group" "test" {
+    name 	 = "acctestrg-%d"
+    location = "southcentralus"
+}
+
+resource "azurerm_virtual_network" "test" {
+    name 		        = "acctvn-%d"
+    address_space       = ["10.0.0.0/16"]
+    location            = "southcentralus"
+    resource_group_name = "${azurerm_resource_group.test.name}"
+}
+
+resource "azurerm_subnet" "test" {
+    name                 = "acctsub-%d"
+    resource_group_name  = "${azurerm_resource_group.test.name}"
+    virtual_network_name = "${azurerm_virtual_network.test.name}"
+    address_prefix       = "10.0.2.0/24"
+}
+
+resource "azurerm_virtual_machine_scale_set" "test" {
+  	name                = "acctvmss-%d"
+  	location            = "southcentralus"
+  	resource_group_name = "${azurerm_resource_group.test.name}"
+  	upgrade_policy_mode = "Manual"
+	overprovision       = false
+
+  	sku {
+		name     = "Standard_A0"
+    	tier     = "Standard"
+    	capacity = 1
+	}
+
+  	os_profile {
+    	computer_name_prefix = "testvm-%d"
+    	admin_username = "myadmin"
+    	admin_password = "Passwword1234"
+  	}
+
+  	network_profile {
+      	name    = "TestNetworkProfile"
+      	primary = true
+      	ip_configuration {
+        	name	  = "TestIPConfiguration"
+        	subnet_id = "${azurerm_subnet.test.id}"
+      	}
+  	}
+
+  	storage_profile_image_reference {
+    	publisher = "Canonical"
+    	offer     = "UbuntuServer"
+    	sku       = "14.04.2-LTS"
+    	version   = "latest"
+  	}
+
+	storage_profile_os_disk {
+		managed_disk {
+			storage_account_type = "Standard_LRS"
+		}
 	}
 }
 `
