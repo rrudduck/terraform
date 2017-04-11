@@ -85,6 +85,11 @@ func resourceArmKeyVault() *schema.Resource {
 							Required:     true,
 							ValidateFunc: validateUUID,
 						},
+						"application_id": {
+							Type:         schema.TypeString,
+							Required:     false,
+							ValidateFunc: validateUUID,
+						},
 						"key_permissions": {
 							Type:     schema.TypeList,
 							Required: true,
@@ -282,6 +287,11 @@ func expandKeyVaultAccessPolicies(d *schema.ResourceData) *[]keyvault.AccessPoli
 		objectUUID := policyRaw["object_id"].(string)
 		policy.ObjectID = &objectUUID
 
+		applicationID := uuid.FromStringOrNil(policyRaw["application_id"].(string))
+		if applicationID != uuid.Nil {
+			policy.ApplicationID = &applicationID
+		}
+
 		result = append(result, policy)
 	}
 
@@ -316,6 +326,10 @@ func flattenKeyVaultAccessPolicies(policies *[]keyvault.AccessPolicyEntry) []int
 		policyRaw["object_id"] = policy.ObjectID
 		policyRaw["key_permissions"] = keyPermissionsRaw
 		policyRaw["secret_permissions"] = secretPermissionsRaw
+
+		if policy.ApplicationID != nil {
+			policyRaw["application_id"] = policy.ApplicationID.String()
+		}
 
 		result = append(result, policyRaw)
 	}
