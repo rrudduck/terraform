@@ -336,6 +336,50 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 				Set: resourceArmVirtualMachineScaleSetStorageProfileOsDiskHash,
 			},
 
+			"storage_profile_data_disk": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"managed_disk_type": {
+							Type:          schema.TypeString,
+							Optional:      true,
+							Computed:      true,
+							ConflictsWith: []string{"storage_profile_os_disk.vhd_containers"},
+							ValidateFunc: validation.StringInSlice([]string{
+								string(compute.PremiumLRS),
+								string(compute.StandardLRS),
+							}, true),
+						},
+
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+
+						"caching": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+
+						"create_option": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+
+						"disk_size_gb": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+
+						"lun": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+					},
+				},
+			},
+
 			"storage_profile_image_reference": {
 				Type:     schema.TypeSet,
 				Optional: true,
