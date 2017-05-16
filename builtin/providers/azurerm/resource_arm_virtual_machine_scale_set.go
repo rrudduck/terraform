@@ -1226,7 +1226,7 @@ func expandAzureRMVirtualMachineScaleSetsStorageProfileDataDisk(d *schema.Resour
 		return nil, nil
 	}
 
-	disks := make([]compute.VirtualMachineScaleSetDataDisk, len(diskConfigs))
+	disks := make([]compute.VirtualMachineScaleSetDataDisk, 0, len(diskConfigs))
 	for _, d := range diskConfigs {
 		config := d.(map[string]interface{})
 		name := config["name"].(string)
