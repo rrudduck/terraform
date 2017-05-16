@@ -1230,10 +1230,10 @@ func expandAzureRMVirtualMachineScaleSetsStorageProfileDataDisk(d *schema.Resour
 	for _, d := range diskConfigs {
 		config := d.(map[string]interface{})
 		name := config["name"].(string)
-		lun := config["lun"].(int32)
+		lun := int32(config["lun"].(int))
 		caching := config["caching"].(string)
 		createOption := config["create_option"].(string)
-		size := config["disk_size_gb"].(int32)
+		size := int32(config["disk_size_gb"].(int))
 		managedDiskType := config["managed_disk_type"].(string)
 
 		disk := compute.VirtualMachineScaleSetDataDisk{
