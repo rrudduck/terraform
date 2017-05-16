@@ -1221,7 +1221,7 @@ func expandAzureRMVirtualMachineScaleSetsStorageProfileOsDisk(d *schema.Resource
 }
 
 func expandAzureRMVirtualMachineScaleSetsStorageProfileDataDisk(d *schema.ResourceData) (*[]compute.VirtualMachineScaleSetDataDisk, error) {
-	diskConfigs := d.Get("storage_profile_os_disk").([]interface{})
+	diskConfigs := d.Get("storage_profile_data_disk").([]interface{})
 	if diskConfigs == nil {
 		return nil, nil
 	}
